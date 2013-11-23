@@ -8,11 +8,14 @@ import (
 
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 const (
 	STOPPED = "stopped"
+	STOP    = "stop"
 	STARTED = "started"
+	START   = "start"
 )
 
 type jobdef struct {
@@ -112,6 +115,36 @@ func (ctl jobctl) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	return len(ctl.state[offset:]), nil
 }
 
+func (ctl *jobctl) Write(fid *srv.FFid, data []byte, offset uint64) (int, error) {
+	glog.V(4).Infof("Entering jobctl.Write(%v, %v, %v)", fid, data, offset)
+	defer glog.V(4).Infof("Exiting jobctl.Write(%v, %v, %v)", fid, data, offset)
+
+	ctl.Lock()
+	defer ctl.Lock()
+
+	switch cmd := strings.ToLower(string(data)); cmd {
+	case STOP:
+		if ctl.state != STOPPED {
+			glog.V(3).Infof("Stopping job: %v", ctl.Parent)
+		}
+		return len(data), nil
+	case START:
+		if ctl.state != STARTED {
+			glog.V(3).Infof("Starting job: %v", ctl.Parent)
+		}
+		return len(data), nil
+	default:
+		return 0, fmt.Errorf("Unknown command: %s", cmd)
+	}
+}
+
+func (ctl jobctl) Wstat(fid *srv.FFid, dir *p.Dir) error {
+	glog.V(4).Infof("Entering jobctl.Wstat(%v, %v)", fid, dir)
+	defer glog.V(4).Infof("Exiting jobctl.Wstat(%v, %v)", fid, dir)
+
+	return nil
+}
+
 func (sched jobsched) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	glog.V(4).Infof("Entering jobsched.Read(%v, %v, %v)", fid, buf, offset)
 	defer glog.V(4).Infof("Exiting jobsched.Read(%v, %v, %v)", fid, buf, offset)
@@ -124,6 +157,13 @@ func (sched jobsched) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error
 	return len(sched.schedule[offset:]), nil
 }
 
+func (sched jobsched) Wstat(fid *srv.FFid, dir *p.Dir) error {
+	glog.V(4).Infof("Entering jobsched.Wstat(%v, %v)", fid, dir)
+	defer glog.V(4).Infof("Exiting jobsched.Wstat(%v, %v)", fid, dir)
+
+	return nil
+}
+
 func (cmd jobcmd) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	glog.V(4).Infof("Entering jobcmd.Read(%v, %v, %v)", fid, buf, offset)
 	defer glog.V(4).Infof("Exiting jobcmd.Read(%v, %v, %v)", fid, buf, offset)
@@ -134,4 +174,11 @@ func (cmd jobcmd) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 
 	copy(buf, cmd.cmd[offset:])
 	return len(cmd.cmd[offset:]), nil
+}
+
+func (cmd *jobcmd) Wstat(fid *srv.FFid, dir *p.Dir) error {
+	glog.V(4).Infof("Entering jobcmd.Wstat(%v, %v)", fid, dir)
+	defer glog.V(4).Infof("Exiting jobcmd.Wstat(%v, %v)", fid, dir)
+
+	return nil
 }
