@@ -4,6 +4,9 @@ import (
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
 	"github.com/wkharold/jobd/deps/github.com/golang/glog"
+
+	"fmt"
+	"strings"
 )
 
 type clonefile struct {
@@ -32,10 +35,19 @@ func (k *clonefile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error
 	k.Lock()
 	defer k.Unlock()
 
-	jobdef := string(data)
-	glog.V(3).Infof("Create a new job from: %s", jobdef)
+	glog.V(3).Infof("Create a new job from: %s", string(data))
 
-	if err := jobsroot.addJob(jobdef); err != nil {
+	jdparts := strings.Split(string(data), ":")
+	if len(jdparts) != 3 {
+		return 0, fmt.Errorf("Invalid job definition: %s", string(data))
+	}
+
+	jd, err := mkJobDefinition(jdparts[0], jdparts[1], jdparts[2])
+	if err != nil {
+		return 0, err
+	}
+
+	if err := jobsroot.addJob(*jd); err != nil {
 		return len(data), err
 	}
 

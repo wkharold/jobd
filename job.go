@@ -4,12 +4,22 @@ import (
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
 	"github.com/wkharold/jobd/deps/github.com/golang/glog"
+	"github.com/wkharold/jobd/deps/github.com/gorhill/cronexpr"
+
+	"fmt"
+	"regexp"
 )
 
 const (
 	STOPPED = "stopped"
 	STARTED = "started"
 )
+
+type jobdef struct {
+	name     string
+	schedule string
+	cmd      string
+}
 
 type job struct {
 	srv.File
@@ -30,37 +40,50 @@ type jobcmd struct {
 	cmd string
 }
 
-func mkJob(root *srv.File, user p.User, name, schedule, command string) error {
-	glog.V(4).Infof("Entering mkJob(%v, %v, %s, %s, %s)", root, user, name, schedule, command)
-	defer glog.V(4).Infof("Exiting mkJob(%v, %v, %s, %s, %s)", root, user, name, schedule, command)
+func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
+	glog.V(4).Infof("Entering mkJob(%v, %v, %v)", root, user, def)
+	defer glog.V(4).Infof("Exiting mkJob(%v, %v, %v)", root, user, def)
 
-	glog.V(3).Infoln("Creating job directory: ", name)
+	glog.V(3).Infoln("Creating job directory: ", def.name)
 
 	job := &job{}
-	if err := job.Add(root, name, user, nil, p.DMDIR|0444, job); err != nil {
-		glog.Errorf("Can't add job directory %s to jobs", name)
-		return err
-	}
 
 	ctl := &jobctl{state: STOPPED}
 	if err := ctl.Add(&job.File, "ctl", user, nil, 0555, ctl); err != nil {
-		glog.Errorf("Can't create %s/ctl [%v]", name, err)
-		return err
+		glog.Errorf("Can't create %s/ctl [%v]", def.name, err)
+		return nil, err
 	}
 
-	sched := &jobsched{schedule: schedule}
+	sched := &jobsched{schedule: def.schedule}
 	if err := sched.Add(&job.File, "schedule", user, nil, 0444, sched); err != nil {
-		glog.Errorf("Can't create %s/schedule [%v]", name, err)
-		return err
+		glog.Errorf("Can't create %s/schedule [%v]", def.name, err)
+		return nil, err
 	}
 
-	cmd := &jobcmd{cmd: command}
+	cmd := &jobcmd{cmd: def.cmd}
 	if err := cmd.Add(&job.File, "cmd", user, nil, 0444, cmd); err != nil {
-		glog.Errorf("Can't create %s/cmd [%v]", name, err)
-		return err
+		glog.Errorf("Can't create %s/cmd [%v]", def.name, err)
+		return nil, err
 	}
 
-	return nil
+	return job, nil
+}
+
+func mkJobDefinition(name, schedule, cmd string) (*jobdef, error) {
+	if ok, err := regexp.MatchString("[^[:word:]]", name); ok || err != nil {
+		switch {
+		case ok:
+			return nil, fmt.Errorf("Invalid job name: %s", name)
+		default:
+			return nil, err
+		}
+	}
+
+	if _, err := cronexpr.Parse(schedule); err != nil {
+		return nil, err
+	}
+
+	return &jobdef{name, schedule, cmd}, nil
 }
 
 func (j job) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
