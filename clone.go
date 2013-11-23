@@ -3,21 +3,48 @@ package main
 import (
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
+	"github.com/wkharold/jobd/deps/github.com/golang/glog"
 )
 
-type ctlfile struct {
+type clonefile struct {
 	srv.File
-	jobsdir []byte
 }
 
-func (cf ctlfile) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
-	return 0, nil
+func mkCloneFile(dir *srv.File, user p.User) error {
+	glog.V(4).Infoln("Entering mkCloneFile(%v, %v)", dir, user)
+	defer glog.V(4).Infoln("Exiting mkCloneFile(%v, %v)", dir, user)
+
+	glog.V(3).Infoln("Create the clone file")
+
+	k := new(clonefile)
+	if err := k.Add(dir, "clone", user, nil, 0666, k); err != nil {
+		glog.Errorln("Can't create clone file: ", err)
+		return err
+	}
+
+	return nil
 }
 
-func (cf *ctlfile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error) {
-	return 0, nil
+func (k *clonefile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error) {
+	glog.V(4).Infof("Entering clonefile.Write(%v, %v, %v)", fid, data, offset)
+	defer glog.V(4).Infof("Exiting clonefile.Write(%v, %v, %v)", fid, data, offset)
+
+	k.Lock()
+	defer k.Unlock()
+
+	jobname := string(data)
+	glog.V(3).Infof("Create a new job: %s", jobname)
+
+	if err := jobsroot.addJob(jobname); err != nil {
+		return len(data), err
+	}
+
+	return len(data), nil
 }
 
-func (cf *ctlfile) Wstat(fid *srv.FFid, dir *p.Dir) error {
+func (k *clonefile) Wstat(fid *srv.FFid, dir *p.Dir) error {
+	glog.V(4).Infof("Entering clonefile.Wstat(%v, %v)", fid, dir)
+	defer glog.V(4).Infof("Exiting clonefile.Wstat(%v, %v)", fid, dir)
+
 	return nil
 }
