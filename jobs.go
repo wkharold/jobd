@@ -4,6 +4,9 @@ import (
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
 	"github.com/wkharold/jobd/deps/github.com/golang/glog"
+
+	"fmt"
+	"strings"
 )
 
 type jobsdir struct {
@@ -39,14 +42,19 @@ func (jd *jobsdir) Wstat(fid *srv.FFid, dir *p.Dir) error {
 	return nil
 }
 
-func (jd *jobsdir) addJob(name string) error {
-	glog.V(4).Infof("Entering jobsdir.addJob(%s)", name)
-	defer glog.V(4).Infof("Leaving jobsdir.addJob(%s)", name)
+func (jd *jobsdir) addJob(def string) error {
+	glog.V(4).Infof("Entering jobsdir.addJob(%s)", def)
+	defer glog.V(4).Infof("Leaving jobsdir.addJob(%s)", def)
 
-	glog.V(3).Info("Add job: ", name)
+	dp := strings.Split(def, ":")
+	if len(dp) != 3 {
+		glog.Errorf("Invalid job definition: %s", def)
+		return fmt.Errorf("Invalid job definition: %s", def)
+	}
 
-	_, err := mkJob(&jd.File, jd.user, name)
-	if err != nil {
+	glog.V(3).Info("Add job: ", def)
+
+	if err := mkJob(&jd.File, jd.user, dp[0], dp[1], dp[2]); err != nil {
 		return err
 	}
 

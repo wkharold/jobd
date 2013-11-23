@@ -32,10 +32,10 @@ func (k *clonefile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error
 	k.Lock()
 	defer k.Unlock()
 
-	jobname := string(data)
-	glog.V(3).Infof("Create a new job: %s", jobname)
+	jobdef := string(data)
+	glog.V(3).Infof("Create a new job from: %s", jobdef)
 
-	if err := jobsroot.addJob(jobname); err != nil {
+	if err := jobsroot.addJob(jobdef); err != nil {
 		return len(data), err
 	}
 
