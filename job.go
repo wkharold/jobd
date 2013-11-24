@@ -6,7 +6,9 @@ import (
 	"github.com/wkharold/jobd/deps/github.com/golang/glog"
 	"github.com/wkharold/jobd/deps/github.com/gorhill/cronexpr"
 
+	"bytes"
 	"fmt"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -162,6 +164,14 @@ func (j *job) run() {
 		select {
 		case <-time.After(e.Next(now).Sub(now)):
 			glog.V(3).Infof("running `%s`", j.defn.cmd)
+			var out bytes.Buffer
+			k := exec.Command("/bin/bash", "-c", j.defn.cmd)
+			k.Stdout = &out
+			if err := k.Run(); err != nil {
+				glog.Errorf("%s failed: %v", j.defn.cmd, err)
+				continue
+			}
+			glog.V(3).Infof("%s returned: %s", j.defn.name, out.String())
 		case <-j.done:
 			glog.V(3).Infof("completed")
 			return
