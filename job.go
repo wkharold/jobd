@@ -69,7 +69,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 				return 0, fmt.Errorf("Unknown command: %s", cmd)
 			}
 		}}
-	if err := ctl.Add(&job.File, "ctl", user, nil, 0555, ctl); err != nil {
+	if err := ctl.Add(&job.File, "ctl", user, nil, 0666, ctl); err != nil {
 		glog.Errorf("Can't create %s/ctl [%v]", def.name, err)
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (jf *jobfile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error)
 	defer glog.V(4).Infof("Exiting jobctl.Write(%v, %v, %v)", fid, data, offset)
 
 	jf.Parent.Lock()
-	defer jf.Parent.Lock()
+	defer jf.Parent.Unlock()
 
 	return jf.writer(data)
 }
