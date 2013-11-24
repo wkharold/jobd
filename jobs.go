@@ -50,7 +50,7 @@ func (jd *jobsdir) addJob(def jobdef) error {
 		return err
 	}
 
-	if err := job.Add(&jd.File, def.name, jd.user, nil, p.DMDIR|0444, job); err != nil {
+	if err := job.Add(&jd.File, def.name, jd.user, nil, p.DMDIR|0555, job); err != nil {
 		glog.Errorf("Can't add job %s to jobs directory", def.name)
 		return err
 	}
