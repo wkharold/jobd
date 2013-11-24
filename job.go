@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -31,6 +32,7 @@ type jobwriter func([]byte) (int, error)
 type job struct {
 	srv.File
 	defn jobdef
+	done chan bool
 }
 
 type jobfile struct {
@@ -45,7 +47,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 
 	glog.V(3).Infoln("Creating job directory: ", def.name)
 
-	job := &job{defn: def}
+	job := &job{defn: def, done: make(chan bool)}
 
 	ctl := &jobfile{
 		reader: func() []byte {
@@ -57,12 +59,14 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 				if job.defn.state != STOPPED {
 					glog.V(3).Infof("Stopping job: %v", job.defn.name)
 					job.defn.state = STOPPED
+					job.done <- true
 				}
 				return len(data), nil
 			case START:
 				if job.defn.state != STARTED {
 					glog.V(3).Infof("Starting job: %v", job.defn.name)
 					job.defn.state = STARTED
+					go job.run()
 				}
 				return len(data), nil
 			default:
@@ -163,4 +167,18 @@ func (jf *jobfile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error)
 	defer jf.Parent.Unlock()
 
 	return jf.writer(data)
+}
+
+func (j *job) run() {
+	for {
+		now := time.Now()
+		e, _ := cronexpr.Parse(j.defn.schedule)
+		select {
+		case <-time.After(e.Next(now).Sub(now)):
+			glog.V(3).Infof("running `%s`", j.defn.cmd)
+		case <-j.done:
+			glog.V(3).Infof("completed")
+			return
+		}
+	}
 }
