@@ -9,6 +9,7 @@ import (
 	"os"
 )
 
+// jobsroot is the root of the jobd file hierarchy
 var jobsroot *jobsdir
 
 func main() {
@@ -35,6 +36,8 @@ func main() {
 	os.Exit(0)
 }
 
+// mkjobfs creates the static portion of the jobd file hierarchy: the 'clone'
+// file, and the 'jobs' directory at the root of the hierarchy.
 func mkjobfs() (*srv.File, error) {
 	var err error
 
