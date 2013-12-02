@@ -118,20 +118,6 @@ func mkJobDefinition(name, schedule, cmd string) (*jobdef, error) {
 	return &jobdef{name, schedule, cmd, STOPPED}, nil
 }
 
-func (j job) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
-	glog.V(4).Infof("Entering job.Read(%v, %v, %v)", fid, buf, offset)
-	defer glog.V(4).Infof("Entering job.Read(%v, %v, %v)", fid, buf, offset)
-
-	return 0, nil
-}
-
-func (j *job) Wstat(fid *srv.FFid, dir *p.Dir) error {
-	glog.V(4).Infof("Entering job.Wstat(%v, %v)", fid, dir)
-	defer glog.V(4).Infof("Exiting job.Wstat(%v, %v)", fid, dir)
-
-	return nil
-}
-
 func (jf jobfile) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	glog.V(4).Infof("Entering jofile.Read(%v, %v, %)", fid, buf, offset)
 	defer glog.V(4).Infof("Exiting jobfile.Read(%v, %v, %v)", fid, buf, offset)
