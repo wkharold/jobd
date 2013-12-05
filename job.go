@@ -7,6 +7,7 @@ import (
 	"github.com/wkharold/jobd/deps/github.com/gorhill/cronexpr"
 
 	"bytes"
+	"container/ring"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -33,8 +34,9 @@ type jobwriter func([]byte) (int, error)
 
 type job struct {
 	srv.File
-	defn jobdef
-	done chan bool
+	defn    jobdef
+	done    chan bool
+	history *ring.Ring
 }
 
 type jobfile struct {
@@ -49,7 +51,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 
 	glog.V(3).Infoln("Creating job directory: ", def.name)
 
-	job := &job{defn: def, done: make(chan bool)}
+	job := &job{defn: def, done: make(chan bool), history: ring.New(1024)}
 
 	ctl := &jobfile{
 		reader: func() []byte {
@@ -92,7 +94,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 			return 0, srv.Eperm
 		}}
 	if err := sched.Add(&job.File, "schedule", user, nil, 0444, sched); err != nil {
-		glog.Errorf("Can't create %s/schedule [%v]", def.name, err)
+		glog.Errorf("Can't create %s/schedule [%v]", job.defn.name, err)
 		return nil, err
 	}
 
@@ -104,7 +106,27 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 			return 0, srv.Eperm
 		}}
 	if err := cmd.Add(&job.File, "cmd", user, nil, 0444, cmd); err != nil {
-		glog.Errorf("Can't create %s/cmd [%v]", def.name, err)
+		glog.Errorf("Can't create %s/cmd [%v]", job.defn.name, err)
+		return nil, err
+	}
+
+	log := &jobfile{
+		reader: func() []byte {
+			result := []byte{}
+			job.history.Do(func(v interface{}) {
+				if v != nil {
+					for _, b := range bytes.NewBufferString(v.(string)).Bytes() {
+						result = append(result, b)
+					}
+				}
+			})
+			return result
+		},
+		writer: func(data []byte) (int, error) {
+			return 0, srv.Eperm
+		}}
+	if err := log.Add(&job.File, "log", user, nil, 0444, log); err != nil {
+		glog.Errorf("Can't create %s/log [%v]", job.defn.name, err)
 		return nil, err
 	}
 
@@ -162,6 +184,8 @@ func (jf *jobfile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error)
 }
 
 func (j *job) run() {
+	j.history.Value = fmt.Sprintf("%s:started\n", time.Now().String())
+	j.history = j.history.Next()
 	for {
 		now := time.Now()
 		e, _ := cronexpr.Parse(j.defn.schedule)
@@ -176,8 +200,12 @@ func (j *job) run() {
 				continue
 			}
 			glog.V(3).Infof("%s returned: %s", j.defn.name, out.String())
+			j.history.Value = fmt.Sprintf("%s:%s", time.Now().String(), out.String())
+			j.history = j.history.Next()
 		case <-j.done:
 			glog.V(3).Infof("completed")
+			j.history.Value = fmt.Sprintf("%s:completed\n", time.Now().String())
+			j.history = j.history.Next()
 			return
 		}
 	}
