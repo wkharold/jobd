@@ -82,7 +82,11 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 
 	sched := &jobfile{
 		reader: func() []byte {
-			return []byte(def.schedule)
+			if job.defn.state == STARTED {
+				e, _ := cronexpr.Parse(job.defn.schedule)
+				return []byte(fmt.Sprintf("%s:%v", job.defn.schedule, e.Next(time.Now())))
+			}
+			return []byte(job.defn.schedule)
 		},
 		writer: func(data []byte) (int, error) {
 			return 0, srv.Eperm
