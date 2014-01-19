@@ -51,7 +51,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 
 	glog.V(3).Infoln("Creating job directory: ", def.name)
 
-	job := &job{defn: def, done: make(chan bool), history: ring.New(1024)}
+	job := &job{defn: def, done: make(chan bool), history: ring.New(32)}
 
 	ctl := &jobfile{
 		reader: func() []byte {
@@ -188,7 +188,12 @@ func (j *job) run() {
 	j.history = j.history.Next()
 	for {
 		now := time.Now()
-		e, _ := cronexpr.Parse(j.defn.schedule)
+		e, err := cronexpr.Parse(j.defn.schedule)
+		if err != nil {
+			glog.Errorf("Can't parse %s [%s]", j.defn.schedule, err)
+			return
+		}
+		glog.V(4).Infof("Next run at: %s", e.Next(now))
 		select {
 		case <-time.After(e.Next(now).Sub(now)):
 			glog.V(3).Infof("running `%s`", j.defn.cmd)
@@ -202,6 +207,7 @@ func (j *job) run() {
 			glog.V(3).Infof("%s returned: %s", j.defn.name, out.String())
 			j.history.Value = fmt.Sprintf("%s:%s", time.Now().String(), out.String())
 			j.history = j.history.Next()
+			glog.V(4).Infof("finished `%s`", j.defn.cmd)
 		case <-j.done:
 			glog.V(3).Infof("completed")
 			j.history.Value = fmt.Sprintf("%s:completed\n", time.Now().String())
