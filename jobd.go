@@ -1,25 +1,60 @@
 package main
 
 import (
+	"bufio"
+	"flag"
+	"os"
+	"path"
+	"strings"
+
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
 	_ "github.com/wkharold/jobd/deps/github.com/golang/glog"
-
-	"flag"
-	"os"
 )
 
 // jobsroot is the root of the jobd file hierarchy
 var jobsroot *jobsdir
+var jobsdb string
 
 func main() {
 	flfsaddr := flag.String("fsaddr", "0.0.0.0:5640", "Address where job file service listens for connections")
+	fldbdir := flag.String("dbdir", "/var/lib/jobd", "Location of the jobd jobs database")
 	fldebug := flag.Bool("debug", false, "9p debugging to stderr")
 	flag.Parse()
+
+	var err error
+
+	jobsdb, err = mkjobdb(*fldbdir)
+	if err != nil {
+		os.Exit(1)
+	}
 
 	root, err := mkjobfs()
 	if err != nil {
 		os.Exit(1)
+	}
+
+	switch db, err := os.Open(jobsdb); {
+	case err != nil:
+		os.Exit(1)
+	default:
+		scanner := bufio.NewScanner(db)
+		for scanner.Scan() {
+			data := scanner.Text()
+			jdparts := strings.Split(data, ":")
+			if len(jdparts) != 3 {
+				os.Exit(1)
+			}
+
+			jd, err := mkJobDefinition(jdparts[0], jdparts[1], jdparts[2])
+			if err != nil {
+				os.Exit(1)
+			}
+
+			if err := jobsroot.addJob(*jd); err != nil {
+				os.Exit(1)
+			}
+		}
 	}
 
 	s := srv.NewFileSrv(root)
@@ -34,6 +69,25 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+// mkjobdb checks to see if the specified path to the jobd database exists and creates it
+// if necessary, it also creates an empty database if none exists. Returns the full
+// path to the jobs database
+func mkjobdb(dbdir string) (string, error) {
+	if err := os.MkdirAll(dbdir, 0755); err != nil {
+		return "", err
+	}
+
+	dbpath := path.Join(dbdir, "jobs.db")
+
+	f, err := os.OpenFile(dbpath, os.O_CREATE|os.O_RDONLY, 0755)
+	if err != nil {
+		return "", err
+	}
+	f.Close()
+
+	return dbpath, nil
 }
 
 // mkjobfs creates the static portion of the jobd file hierarchy: the 'clone'

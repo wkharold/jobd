@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
 	"github.com/wkharold/jobd/deps/github.com/golang/glog"
@@ -49,6 +51,14 @@ func (k *clonefile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error
 
 	if err := jobsroot.addJob(*jd); err != nil {
 		return len(data), err
+	}
+
+	switch db, err := os.OpenFile(jobsdb, os.O_WRONLY|os.O_APPEND, 0755); {
+	case err != nil:
+		return len(data), err
+	default:
+		fmt.Fprintf(db, "%s\n", string(data))
+		db.Close()
 	}
 
 	return len(data), nil
