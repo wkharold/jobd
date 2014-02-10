@@ -14,6 +14,8 @@ import (
 
 // jobsroot is the root of the jobd file hierarchy
 var jobsroot *jobsdir
+
+// jobsdb is the path to the jobs database
 var jobsdb string
 
 func main() {
@@ -72,7 +74,7 @@ func main() {
 }
 
 // mkjobdb checks to see if the specified path to the jobd database exists and creates it
-// if necessary, it also creates an empty database if none exists. Returns the full
+// if necessary, it also creates an empty database if none exists and returns the full
 // path to the jobs database
 func mkjobdb(dbdir string) (string, error) {
 	if err := os.MkdirAll(dbdir, 0755); err != nil {
