@@ -11,6 +11,7 @@ type jobsdir struct {
 	user p.User
 }
 
+// mkJobsDir create the jobs directory at the root of the jobd name space.
 func mkJobsDir(dir *srv.File, user p.User) (*jobsdir, error) {
 	glog.V(4).Infof("Entering mkJobsDir(%v, %v)", dir, user)
 	defer glog.V(4).Infof("Leaving mkJobsDir(%v, %v)", dir, user)
@@ -26,6 +27,8 @@ func mkJobsDir(dir *srv.File, user p.User) (*jobsdir, error) {
 	return jobs, nil
 }
 
+// addJob uses mkJob to create a new job subtree for the given job definition and adds it to
+// the jobd name space under the jobs directory.
 func (jd *jobsdir) addJob(def jobdef) error {
 	glog.V(4).Infof("Entering jobsdir.addJob(%s)", def)
 	defer glog.V(4).Infof("Leaving jobsdir.addJob(%s)", def)

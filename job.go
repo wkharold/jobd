@@ -16,17 +16,17 @@ import (
 )
 
 const (
-    // STOPPED indicates the job is stopped
+	// STOPPED indicates the job is stopped
 	STOPPED = "stopped"
 
-    // STOP the ctl file command string to stop a job
-	STOP    = "stop"
+	// STOP the ctl file command string to stop a job
+	STOP = "stop"
 
-    // STARTED indicates the job is started
+	// STARTED indicates the job is started
 	STARTED = "started"
 
-    // START the ctl file command string to start a job
-	START   = "start"
+	// START the ctl file command string to start a job
+	START = "start"
 )
 
 type jobdef struct {
@@ -52,6 +52,8 @@ type jobfile struct {
 	writer jobwriter
 }
 
+// mkJob creates the subtree of files that represent a job in jobd and returns
+// it to its caller.
 func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 	glog.V(4).Infof("Entering mkJob(%v, %v, %v)", root, user, def)
 	defer glog.V(4).Infof("Exiting mkJob(%v, %v, %v)", root, user, def)
@@ -61,9 +63,11 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 	job := &job{defn: def, done: make(chan bool), history: ring.New(32)}
 
 	ctl := &jobfile{
+		// ctl reader returns the current state of the job.
 		reader: func() []byte {
 			return []byte(job.defn.state)
 		},
+		// ctl writer is responsible for stopping or starting the job.
 		writer: func(data []byte) (int, error) {
 			switch cmd := strings.ToLower(string(data)); cmd {
 			case STOP:
@@ -90,6 +94,8 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 	}
 
 	sched := &jobfile{
+		// schedule reader returns the job's schedule and, if it's started, its
+		// next scheduled execution time.
 		reader: func() []byte {
 			if job.defn.state == STARTED {
 				e, _ := cronexpr.Parse(job.defn.schedule)
@@ -97,6 +103,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 			}
 			return []byte(job.defn.schedule)
 		},
+		// schedule is read only.
 		writer: func(data []byte) (int, error) {
 			return 0, srv.Eperm
 		}}
@@ -106,9 +113,11 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 	}
 
 	cmd := &jobfile{
+		// cmd reader returns the job's command.
 		reader: func() []byte {
 			return []byte(def.cmd)
 		},
+		// cmd is read only.
 		writer: func(data []byte) (int, error) {
 			return 0, srv.Eperm
 		}}
@@ -118,6 +127,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 	}
 
 	log := &jobfile{
+		// log reader returns the job's execution history.
 		reader: func() []byte {
 			result := []byte{}
 			job.history.Do(func(v interface{}) {
@@ -129,6 +139,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 			})
 			return result
 		},
+		// log is read only.
 		writer: func(data []byte) (int, error) {
 			return 0, srv.Eperm
 		}}
@@ -140,6 +151,8 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 	return job, nil
 }
 
+// mkJobDefinition examines the components of a job definition it is given and
+// returns a new jobdef struct containing them if they are valid.
 func mkJobDefinition(name, schedule, cmd string) (*jobdef, error) {
 	if ok, err := regexp.MatchString("[^[:word:]]", name); ok || err != nil {
 		switch {
@@ -157,8 +170,9 @@ func mkJobDefinition(name, schedule, cmd string) (*jobdef, error) {
 	return &jobdef{name, schedule, cmd, STOPPED}, nil
 }
 
+// Read handles read operations on a jobfile using its associated reader.
 func (jf jobfile) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
-	glog.V(4).Infof("Entering jofile.Read(%v, %v, %)", fid, buf, offset)
+	glog.V(4).Infof("Entering jobfile.Read(%v, %v, %)", fid, buf, offset)
 	defer glog.V(4).Infof("Exiting jobfile.Read(%v, %v, %v)", fid, buf, offset)
 
 	cont := jf.reader()
@@ -173,6 +187,9 @@ func (jf jobfile) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	return len(contout), nil
 }
 
+// Wstat doesn't do anything but support for the operation is required to make
+// the OS file system calls happy.
+// TODO: verify it's still necessary.
 func (jf jobfile) Wstat(fid *srv.FFid, dir *p.Dir) error {
 	glog.V(4).Infof("Entering jobfile.Wstat(%v, %v)", fid, dir)
 	defer glog.V(4).Infof("Exiting jobfile.Wstat(%v, %v, %v)", fid, dir)
@@ -180,9 +197,10 @@ func (jf jobfile) Wstat(fid *srv.FFid, dir *p.Dir) error {
 	return nil
 }
 
+// Write handles write operations on a jobfile using its associated writer.
 func (jf *jobfile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error) {
-	glog.V(4).Infof("Entering jobctl.Write(%v, %v, %v)", fid, data, offset)
-	defer glog.V(4).Infof("Exiting jobctl.Write(%v, %v, %v)", fid, data, offset)
+	glog.V(4).Infof("Entering jobfile.Write(%v, %v, %v)", fid, data, offset)
+	defer glog.V(4).Infof("Exiting jobfile.Write(%v, %v, %v)", fid, data, offset)
 
 	jf.Parent.Lock()
 	defer jf.Parent.Unlock()
@@ -190,6 +208,8 @@ func (jf *jobfile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error)
 	return jf.writer(data)
 }
 
+// run executes the command associated with a job according to its schedule and
+// records the results until it is told to stop.
 func (j *job) run() {
 	j.history.Value = fmt.Sprintf("%s:started\n", time.Now().String())
 	j.history = j.history.Next()
@@ -200,7 +220,7 @@ func (j *job) run() {
 			glog.Errorf("Can't parse %s [%s]", j.defn.schedule, err)
 			return
 		}
-		glog.V(4).Infof("Next run at: %s", e.Next(now))
+
 		select {
 		case <-time.After(e.Next(now).Sub(now)):
 			glog.V(3).Infof("running `%s`", j.defn.cmd)
@@ -214,7 +234,6 @@ func (j *job) run() {
 			glog.V(3).Infof("%s returned: %s", j.defn.name, out.String())
 			j.history.Value = fmt.Sprintf("%s:%s", time.Now().String(), out.String())
 			j.history = j.history.Next()
-			glog.V(4).Infof("finished `%s`", j.defn.cmd)
 		case <-j.done:
 			glog.V(3).Infof("completed")
 			j.history.Value = fmt.Sprintf("%s:completed\n", time.Now().String())
