@@ -40,7 +40,7 @@ func (k *clonefile) Write(fid *srv.FFid, data []byte, offset uint64) (int, error
 
 	jdparts := strings.Split(string(data), ":")
 	if len(jdparts) != 3 {
-		return 0, fmt.Errorf("Invalid job definition: %s", string(data))
+		return 0, fmt.Errorf("invalid job definition: %s", string(data))
 	}
 
 	jd, err := mkJobDefinition(jdparts[0], jdparts[1], jdparts[2])

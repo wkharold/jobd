@@ -16,9 +16,16 @@ import (
 )
 
 const (
+    // STOPPED indicates the job is stopped
 	STOPPED = "stopped"
+
+    // STOP the ctl file command string to stop a job
 	STOP    = "stop"
+
+    // STARTED indicates the job is started
 	STARTED = "started"
+
+    // START the ctl file command string to start a job
 	START   = "start"
 )
 
@@ -74,7 +81,7 @@ func mkJob(root *srv.File, user p.User, def jobdef) (*job, error) {
 				}
 				return len(data), nil
 			default:
-				return 0, fmt.Errorf("Unknown command: %s", cmd)
+				return 0, fmt.Errorf("unknown command: %s", cmd)
 			}
 		}}
 	if err := ctl.Add(&job.File, "ctl", user, nil, 0666, ctl); err != nil {
@@ -137,7 +144,7 @@ func mkJobDefinition(name, schedule, cmd string) (*jobdef, error) {
 	if ok, err := regexp.MatchString("[^[:word:]]", name); ok || err != nil {
 		switch {
 		case ok:
-			return nil, fmt.Errorf("Invalid job name: %s", name)
+			return nil, fmt.Errorf("invalid job name: %s", name)
 		default:
 			return nil, err
 		}

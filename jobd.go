@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
 	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
 	_ "github.com/wkharold/jobd/deps/github.com/golang/glog"
@@ -45,15 +46,18 @@ func main() {
 			data := scanner.Text()
 			jdparts := strings.Split(data, ":")
 			if len(jdparts) != 3 {
+				glog.Errorf("jobdb corruption: invalid job definition (%v)", data)
 				os.Exit(1)
 			}
 
 			jd, err := mkJobDefinition(jdparts[0], jdparts[1], jdparts[2])
 			if err != nil {
+				glog.Errorf("unable to create job definition (%v)", err)
 				os.Exit(1)
 			}
 
 			if err := jobsroot.addJob(*jd); err != nil {
+				glog.Errorf("can't add job (%v)", err)
 				os.Exit(1)
 			}
 		}
@@ -67,6 +71,7 @@ func main() {
 	s.Start(s)
 
 	if err := s.StartNetListener("tcp", *flfsaddr); err != nil {
+		glog.Errorf("listener failed to start (%v)", err)
 		os.Exit(1)
 	}
 
