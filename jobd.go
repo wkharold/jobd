@@ -36,29 +36,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	switch db, err := os.Open(jobsdb); {
-	case err != nil:
+	db, err := os.Open(jobsdb)
+	if err != nil {
 		os.Exit(1)
-	default:
-		scanner := bufio.NewScanner(db)
-		for scanner.Scan() {
-			data := scanner.Text()
-			jdparts := strings.Split(data, ":")
-			if len(jdparts) != 3 {
-				glog.Errorf("jobdb corruption: invalid job definition (%v)", data)
-				os.Exit(1)
-			}
+	}
 
-			jd, err := mkJobDefinition(jdparts[0], jdparts[1], jdparts[2])
-			if err != nil {
-				glog.Errorf("unable to create job definition (%v)", err)
-				os.Exit(1)
-			}
+	scanner := bufio.NewScanner(db)
+	for scanner.Scan() {
+		data := scanner.Text()
+		jdparts := strings.Split(data, ":")
+		if len(jdparts) != 3 {
+			glog.Errorf("jobdb corruption: invalid job definition (%v)", data)
+			os.Exit(1)
+		}
 
-			if err := jobsroot.addJob(*jd); err != nil {
-				glog.Errorf("can't add job (%v)", err)
-				os.Exit(1)
-			}
+		jd, err := mkJobDefinition(jdparts[0], jdparts[1], jdparts[2])
+		if err != nil {
+			glog.Errorf("unable to create job definition (%v)", err)
+			os.Exit(1)
+		}
+
+		if err := jobsroot.addJob(*jd); err != nil {
+			glog.Errorf("can't add job (%v)", err)
+			os.Exit(1)
 		}
 	}
 
