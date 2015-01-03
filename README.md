@@ -1,6 +1,22 @@
 #jobd
 
-Jobd implements *cron* as a 9p file system. 9p is [a simple file protocol to build sane distributed systems](http://9p.cat-v.org/). It's the cornerstone of [the Styx Architecture for Distributed Systems](http://doc.cat-v.org/inferno/4th_edition/styx) which represents the system's resources as a form of file system. Jobd illustrates this approach to system design using the [go9p](https://code.google.com/p/go9p) library.
+Jobd implements *cron* as a 9p file system. 9p is [a simple file protocol to
+build sane distributed systems](http://9p.cat-v.org/). It's the cornerstone of
+[the Styx Architecture for Distributed
+Systems](http://doc.cat-v.org/inferno/4th_edition/styx) which represents the
+system's resources as a form of file system. Jobd illustrates this approach to
+system design using the [go9p](https://code.google.com/p/go9p) library.
+
+##Installation
+
+jobd uses [godep]() to capture its dependencies. To install it just
+```
+$ go get github.com/wkharold/jobd
+```
+To build it, make sure you have godep installed and then
+```
+$ godep go install
+```
 
 ##Usage
 ```
