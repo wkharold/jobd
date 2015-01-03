@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
-	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
-	"github.com/wkharold/jobd/deps/github.com/golang/glog"
-	"github.com/wkharold/jobd/deps/github.com/gorhill/cronexpr"
+	"code.google.com/p/go9p/p"
+	"code.google.com/p/go9p/p/srv"
+	"github.com/golang/glog"
+	"github.com/gorhill/cronexpr"
 
 	"bytes"
 	"container/ring"
