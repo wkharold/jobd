@@ -1,0 +1,19 @@
+{
+	"ImportPath": "github.com/wkharold/jobd",
+	"GoVersion": "go1.4",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go9p/p",
+			"Comment": "null-136",
+			"Rev": "6fbe20706ec75fe2643b2d8042f874510d54fd0d"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
+		},
+		{
+			"ImportPath": "github.com/gorhill/cronexpr",
+			"Rev": "a557574d6c024ed6e36acc8b610f5f211c91568a"
+		}
+	]
+}

@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
-	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
-	"github.com/wkharold/jobd/deps/github.com/golang/glog"
+	"code.google.com/p/go9p/p"
+	"code.google.com/p/go9p/p/srv"
+	"github.com/golang/glog"
 )
 
 type clonefile struct {
-    srv.File
+	srv.File
 }
 
 // mkCloneFile creates the clone file at the root of the jobd name space.
