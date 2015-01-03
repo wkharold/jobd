@@ -7,9 +7,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p"
-	"github.com/wkharold/jobd/deps/code.google.com/p/go9p/p/srv"
-	"github.com/wkharold/jobd/deps/github.com/golang/glog"
+	"code.google.com/p/go9p/p"
+	"code.google.com/p/go9p/p/srv"
+	"github.com/golang/glog"
 )
 
 // jobsroot is the root of the jobd file hierarchy
