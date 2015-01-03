@@ -9,7 +9,7 @@ system design using the [go9p](https://code.google.com/p/go9p) library.
 
 ##Installation
 
-jobd uses [godep]() to capture its dependencies. To install it just
+jobd uses [godep](https://github.com/tools/godep) to capture its dependencies. To install it just
 ```
 $ go get github.com/wkharold/jobd
 ```
